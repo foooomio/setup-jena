@@ -1,0 +1,10 @@
+name: 'Setup Apache Jena'
+description: 'Setup Apache Jena and add it to the PATH'
+inputs:
+  jena-version:
+    description: 'The version of Apache Jena to be installed'
+    required: false
+    default: 'latest'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'

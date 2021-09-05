@@ -11759,11 +11759,12 @@ async function getLatestVersion() {
     return latest;
 }
 async function installJena(version) {
-    const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
+    const archiveName = `apache-jena-${version}`;
+    const downloadUrl = `https://archive.apache.org/dist/jena/binaries/${archiveName}.tar.gz`;
     const archivePath = await tool_cache.downloadTool(downloadUrl);
     const extractedPath = await tool_cache.extractTar(archivePath);
     const cachedPath = await tool_cache.cacheDir(extractedPath, 'jena', version);
-    return external_path_default().join(cachedPath, 'bin');
+    return external_path_default().join(cachedPath, archiveName, 'bin');
 }
 async function run() {
     let version = core.getInput('jena-version');

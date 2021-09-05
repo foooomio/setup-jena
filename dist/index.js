@@ -11759,12 +11759,12 @@ async function getLatestVersion() {
     return latest;
 }
 async function installJena(version) {
-    const archiveName = `apache-jena-${version}`;
-    const downloadUrl = `https://archive.apache.org/dist/jena/binaries/${archiveName}.tar.gz`;
+    const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
     const archivePath = await tool_cache.downloadTool(downloadUrl);
-    const extractedPath = await tool_cache.extractTar(archivePath);
+    const flags = ['xz', '--strip=1'];
+    const extractedPath = await tool_cache.extractTar(archivePath, undefined, flags);
     const cachedPath = await tool_cache.cacheDir(extractedPath, 'jena', version);
-    return external_path_default().join(cachedPath, archiveName, 'bin');
+    return cachedPath;
 }
 async function run() {
     let version = core.getInput('jena-version');
@@ -11775,7 +11775,8 @@ async function run() {
     if (!jenaPath) {
         jenaPath = await installJena(version);
     }
-    core.addPath(jenaPath);
+    core.exportVariable('JENA_HOME', jenaPath);
+    core.addPath(external_path_default().join(jenaPath, 'bin'));
 }
 run().catch((e) => {
     core.setFailed(e.message);

@@ -40,14 +40,14 @@ async function getLatestVersion(): Promise<string> {
 }
 
 async function installJena(version: string): Promise<string> {
-  const archiveName = `apache-jena-${version}`;
-  const downloadUrl = `https://archive.apache.org/dist/jena/binaries/${archiveName}.tar.gz`;
+  const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
 
   const archivePath = await tc.downloadTool(downloadUrl);
-  const extractedPath = await tc.extractTar(archivePath);
+  const flags = ['xz', '--strip=1'];
+  const extractedPath = await tc.extractTar(archivePath, undefined, flags);
   const cachedPath = await tc.cacheDir(extractedPath, 'jena', version);
 
-  return path.join(cachedPath, archiveName, 'bin');
+  return cachedPath;
 }
 
 async function run(): Promise<void> {
@@ -61,7 +61,8 @@ async function run(): Promise<void> {
     jenaPath = await installJena(version);
   }
 
-  core.addPath(jenaPath);
+  core.exportVariable('JENA_HOME', jenaPath);
+  core.addPath(path.join(jenaPath, 'bin'));
 }
 
 run().catch((e: Error) => {

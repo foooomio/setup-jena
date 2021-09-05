@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import compareVersions from 'compare-versions';
-import core from '@actions/core';
-import tc from '@actions/tool-cache';
+import * as core from '@actions/core';
+import * as tc from '@actions/tool-cache';
 import path from 'path';
 
 async function getLatestVersion(): Promise<string> {

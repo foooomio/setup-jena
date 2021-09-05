@@ -11724,10 +11724,8 @@ var compare_versions = __nccwpck_require__(296);
 var compare_versions_default = /*#__PURE__*/__nccwpck_require__.n(compare_versions);
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(186);
-var core_default = /*#__PURE__*/__nccwpck_require__.n(core);
 // EXTERNAL MODULE: ./node_modules/@actions/tool-cache/lib/tool-cache.js
 var tool_cache = __nccwpck_require__(784);
-var tool_cache_default = /*#__PURE__*/__nccwpck_require__.n(tool_cache);
 // EXTERNAL MODULE: external "path"
 var external_path_ = __nccwpck_require__(622);
 var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
@@ -11762,24 +11760,24 @@ async function getLatestVersion() {
 }
 async function installJena(version) {
     const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
-    const archivePath = await tool_cache_default().downloadTool(downloadUrl);
-    const extractedPath = await tool_cache_default().extractTar(archivePath);
-    const cachedPath = await tool_cache_default().cacheDir(extractedPath, 'jena', version);
+    const archivePath = await tool_cache.downloadTool(downloadUrl);
+    const extractedPath = await tool_cache.extractTar(archivePath);
+    const cachedPath = await tool_cache.cacheDir(extractedPath, 'jena', version);
     return external_path_default().join(cachedPath, 'bin');
 }
 async function run() {
-    let version = core_default().getInput('jena-version');
+    let version = core.getInput('jena-version');
     if (!version || version === 'latest') {
         version = await getLatestVersion();
     }
-    let jenaPath = tool_cache_default().find('jena', version);
+    let jenaPath = tool_cache.find('jena', version);
     if (!jenaPath) {
         jenaPath = await installJena(version);
     }
-    core_default().addPath(jenaPath);
+    core.addPath(jenaPath);
 }
 run().catch((e) => {
-    core_default().setFailed(e.message);
+    core.setFailed(e.message);
 });
 
 })();

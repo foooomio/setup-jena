@@ -4,43 +4,37 @@ import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
 import path from 'path';
 
+const ARCHIVE_PAGE_URL = 'https://archive.apache.org/dist/jena/binaries/';
+
 async function getLatestVersion(): Promise<string> {
-  const url = 'https://projects.apache.org/json/foundation/releases.json';
-  const response = await fetch(url + '?' + Math.random());
+  const response = await fetch(ARCHIVE_PAGE_URL);
 
   if (!response.ok) {
-    throw new Error(
-      `Couldn't get releases.json: ${response.status} ${response.statusText}`
-    );
+    throw new Error('Could not get the archive page.');
   }
 
-  type Json = Record<string, Record<string, string>>;
-  const { jena } = (await response.json()) as Json;
-
-  if (!jena) {
-    throw new Error('"jena" not found in releases.json');
-  }
+  const html = await response.text();
 
   const versions: string[] = [];
 
-  for (const key of Object.keys(jena)) {
-    const [, version] = key.match(/jena-(\d+\.\d+\.\d+)/) || [];
+  const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
+  for (const [, version] of html.matchAll(regexp)) {
     if (version) {
       versions.push(version);
     }
   }
 
-  const [latest] = versions.sort((a, b) => compareVersions(a, b) * -1);
+  const [latest] = versions.sort((a, b) => compareVersions(b, a));
 
   if (!latest) {
-    throw new Error(`Couldn't get the latest version: ${JSON.stringify(jena)}`);
+    throw new Error('Could not get the latest version.');
   }
 
   return latest;
 }
 
 async function installJena(version: string): Promise<string> {
-  const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
+  const downloadUrl = `${ARCHIVE_PAGE_URL}apache-jena-${version}.tar.gz`;
 
   const archivePath = await tc.downloadTool(downloadUrl);
   const flags = ['xz', '--strip=1'];

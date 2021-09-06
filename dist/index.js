@@ -11735,31 +11735,28 @@ var external_path_default = /*#__PURE__*/__nccwpck_require__.n(external_path_);
 
 
 
+const ARCHIVE_PAGE_URL = 'https://archive.apache.org/dist/jena/binaries/';
 async function getLatestVersion() {
-    const url = 'https://projects.apache.org/json/foundation/releases.json';
-    const response = await fetch(url + '?' + Math.random());
+    const response = await fetch(ARCHIVE_PAGE_URL);
     if (!response.ok) {
-        throw new Error(`Couldn't get releases.json: ${response.status} ${response.statusText}`);
+        throw new Error('Could not get the archive page.');
     }
-    const { jena } = (await response.json());
-    if (!jena) {
-        throw new Error('"jena" not found in releases.json');
-    }
+    const html = await response.text();
     const versions = [];
-    for (const key of Object.keys(jena)) {
-        const [, version] = key.match(/jena-(\d+\.\d+\.\d+)/) || [];
+    const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
+    for (const [, version] of html.matchAll(regexp)) {
         if (version) {
             versions.push(version);
         }
     }
-    const [latest] = versions.sort((a, b) => compare_versions_default()(a, b) * -1);
+    const [latest] = versions.sort((a, b) => compare_versions_default()(b, a));
     if (!latest) {
-        throw new Error(`Couldn't get the latest version: ${JSON.stringify(jena)}`);
+        throw new Error('Could not get the latest version.');
     }
     return latest;
 }
 async function installJena(version) {
-    const downloadUrl = `https://archive.apache.org/dist/jena/binaries/apache-jena-${version}.tar.gz`;
+    const downloadUrl = `${ARCHIVE_PAGE_URL}apache-jena-${version}.tar.gz`;
     const archivePath = await tool_cache.downloadTool(downloadUrl);
     const flags = ['xz', '--strip=1'];
     const extractedPath = await tool_cache.extractTar(archivePath, undefined, flags);

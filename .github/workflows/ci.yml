@@ -17,6 +17,10 @@ jobs:
           java-version: 11
       - uses: ./
       - run: sparql --version
+      - uses: ./
+        with:
+          jena-version: 3.x
+      - run: sparql --version | grep -o 3.9.0
 
   build:
     runs-on: ubuntu-latest

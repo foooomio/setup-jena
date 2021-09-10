@@ -20,7 +20,7 @@ jobs:
       - uses: ./
         with:
           jena-version: 3.x
-      - run: sparql --version | grep -o 3.9.0
+      - run: sparql --version | grep -o 3.17.0
 
   build:
     runs-on: ubuntu-latest

@@ -7106,7 +7106,7 @@ module.exports = v4;
 /***/ (function(__unused_webpack_module, exports) {
 
 /**
- * web-streams-polyfill v3.1.0
+ * web-streams-polyfill v3.1.1
  */
 (function (global, factory) {
      true ? factory(exports) :
@@ -13866,6 +13866,9 @@ var rsort_default = /*#__PURE__*/__nccwpck_require__.n(rsort);
 const CDN_PAGE_URL = 'https://dlcdn.apache.org/jena/binaries/';
 const ARCHIVE_PAGE_URL = 'https://archive.apache.org/dist/jena/binaries/';
 class JenaVersion {
+    input;
+    latest;
+    baseUrl;
     constructor(input) {
         this.input = input;
         this.latest = !this.input || this.input === 'latest';

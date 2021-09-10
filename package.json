@@ -25,10 +25,10 @@
     "semver": "^7.3.5"
   },
   "devDependencies": {
-    "@types/node": "^16.7.10",
+    "@types/node": "^16.9.1",
     "@types/semver": "^7.3.8",
-    "@vercel/ncc": "^0.30.0",
-    "prettier": "^2.3.2",
+    "@vercel/ncc": "^0.31.0",
+    "prettier": "^2.4.0",
     "simple-git-hooks": "^2.6.1",
     "typescript": "^4.4.2"
   },

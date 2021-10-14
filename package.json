@@ -20,19 +20,19 @@
   },
   "homepage": "https://github.com/foooomio/setup-jena#readme",
   "dependencies": {
-    "@actions/core": "^1.5.0",
+    "@actions/core": "^1.6.0",
     "@actions/tool-cache": "^1.7.1",
     "node-fetch": "^3.0.0",
     "semver": "^7.3.5"
   },
   "devDependencies": {
-    "@types/node": "^16.9.1",
+    "@types/node": "^16.11.0",
     "@types/semver": "^7.3.8",
-    "@vercel/ncc": "^0.31.0",
-    "prettier": "^2.4.0",
+    "@vercel/ncc": "^0.31.1",
+    "prettier": "^2.4.1",
     "simple-git-hooks": "^2.6.1",
     "tsm": "^2.1.2",
-    "typescript": "^4.4.2",
+    "typescript": "^4.4.4",
     "uvu": "^0.5.2"
   },
   "simple-git-hooks": {

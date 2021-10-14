@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
 import path from 'path';
-import { JenaVersion } from './jena-version';
+import { getLatest, getSatisfied } from './jena-version';
 
 async function installJena(
   version: string,
@@ -17,7 +17,9 @@ async function installJena(
 
 async function run(): Promise<void> {
   const version = core.getInput('jena-version');
-  const jena = await new JenaVersion(version).getInfo();
+  const isLatest = !version || version === 'latest' || version === '*';
+
+  const jena = isLatest ? await getLatest() : await getSatisfied(version);
 
   let jenaPath = tc.find('jena', jena.version);
   if (!jenaPath) {

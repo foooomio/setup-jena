@@ -17,7 +17,7 @@ async function installJena(
 
 async function run(): Promise<void> {
   const version = core.getInput('jena-version');
-  const isLatest = !version || version === 'latest';
+  const isLatest = !version || version === 'latest' || version === '*';
 
   const jena = isLatest ? await getLatest() : await getSatisfied(version);
 

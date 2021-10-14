@@ -6,7 +6,8 @@
   "scripts": {
     "build": "ncc build src/setup-jena.ts",
     "format": "prettier --write .",
-    "format-check": "prettier --check ."
+    "format-check": "prettier --check .",
+    "test": "uvu -r tsm test"
   },
   "repository": {
     "type": "git",
@@ -30,7 +31,9 @@
     "@vercel/ncc": "^0.31.0",
     "prettier": "^2.4.0",
     "simple-git-hooks": "^2.6.1",
-    "typescript": "^4.4.2"
+    "tsm": "^2.1.2",
+    "typescript": "^4.4.2",
+    "uvu": "^0.5.2"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run format && npm run build"

@@ -7,8 +7,8 @@ export const ARCHIVE_PAGE_URL =
   'https://archive.apache.org/dist/jena/binaries/';
 
 export interface JenaInfo {
-  version: string;
-  downloadUrl: string;
+  readonly version: string;
+  readonly downloadUrl: string;
 }
 
 export async function getLatest(): Promise<JenaInfo> {
@@ -24,8 +24,10 @@ export async function getLatest(): Promise<JenaInfo> {
 export async function getSatisfied(input: string): Promise<JenaInfo> {
   const list = await getAvailableList(ARCHIVE_PAGE_URL);
 
+  const search = input === '2.7.0' ? '2.7.0-incubating' : input;
+
   const info = list.find((candidate) =>
-    semverSatisfies(candidate.version, input)
+    semverSatisfies(candidate.version, search)
   );
 
   if (!info) {
@@ -48,13 +50,12 @@ export async function getAvailableList(url: string): Promise<JenaInfo[]> {
 
   const list: JenaInfo[] = [];
 
-  const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
-  for (const [, version] of html.matchAll(regexp)) {
-    if (version) {
-      list.push({
-        version,
-        downloadUrl: `${url}apache-jena-${version}.tar.gz`,
-      });
+  const regexp =
+    /href="(apache-jena-(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+)?)\.tar\.gz)"/g;
+
+  for (const [, filename, version] of html.matchAll(regexp)) {
+    if (filename && version) {
+      list.push({ version, downloadUrl: url + filename });
     }
   }
 

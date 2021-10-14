@@ -13793,7 +13793,8 @@ async function getLatest() {
 }
 async function getSatisfied(input) {
     const list = await getAvailableList(ARCHIVE_PAGE_URL);
-    const info = list.find((candidate) => satisfies_default()(candidate.version, input));
+    const search = input === '2.7.0' ? '2.7.0-incubating' : input;
+    const info = list.find((candidate) => satisfies_default()(candidate.version, search));
     if (!info) {
         throw new Error(`Could not find a version that matches '${input}'.`);
     }
@@ -13806,13 +13807,10 @@ async function getAvailableList(url) {
     }
     const html = await response.text();
     const list = [];
-    const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
-    for (const [, version] of html.matchAll(regexp)) {
-        if (version) {
-            list.push({
-                version,
-                downloadUrl: `${url}apache-jena-${version}.tar.gz`,
-            });
+    const regexp = /href="(apache-jena-(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+)?)\.tar\.gz)"/g;
+    for (const [, filename, version] of html.matchAll(regexp)) {
+        if (filename && version) {
+            list.push({ version, downloadUrl: url + filename });
         }
     }
     if (!list.length) {
@@ -13835,7 +13833,7 @@ async function installJena(version, downloadUrl) {
 }
 async function run() {
     const version = core.getInput('jena-version');
-    const isLatest = !version || version === 'latest';
+    const isLatest = !version || version === 'latest' || version === '*';
     const jena = isLatest ? await getLatest() : await getSatisfied(version);
     let jenaPath = tool_cache.find('jena', jena.version);
     if (!jenaPath) {

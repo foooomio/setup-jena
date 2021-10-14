@@ -1,91 +1,66 @@
 import fetch from 'node-fetch';
-import semverValid from 'semver/functions/valid';
 import semverSatisfies from 'semver/functions/satisfies';
-import semverRSort from 'semver/functions/rsort';
+import semverCompare from 'semver/functions/compare';
 
-const CDN_PAGE_URL = 'https://dlcdn.apache.org/jena/binaries/';
-const ARCHIVE_PAGE_URL = 'https://archive.apache.org/dist/jena/binaries/';
+export const CDN_PAGE_URL = 'https://dlcdn.apache.org/jena/binaries/';
+export const ARCHIVE_PAGE_URL =
+  'https://archive.apache.org/dist/jena/binaries/';
 
-export interface JenaVersionInfo {
+export interface JenaInfo {
   version: string;
   downloadUrl: string;
 }
 
-export class JenaVersion {
-  readonly input: string;
-  readonly latest: boolean;
-  readonly baseUrl: string;
+export async function getLatest(): Promise<JenaInfo> {
+  const [info] = await getAvailableList(CDN_PAGE_URL);
 
-  constructor(input: string) {
-    this.input = input;
-    this.latest = !this.input || this.input === 'latest';
-    this.baseUrl = this.latest ? CDN_PAGE_URL : ARCHIVE_PAGE_URL;
+  if (!info) {
+    throw new Error('Could not find the latest version.');
   }
 
-  async getInfo(): Promise<JenaVersionInfo> {
-    const version = await this.getVersion();
-    const downloadUrl = this.baseUrl + `apache-jena-${version}.tar.gz`;
-    return { version, downloadUrl };
+  return info;
+}
+
+export async function getSatisfied(input: string): Promise<JenaInfo> {
+  const list = await getAvailableList(ARCHIVE_PAGE_URL);
+
+  const info = list.find((candidate) =>
+    semverSatisfies(candidate.version, input)
+  );
+
+  if (!info) {
+    throw new Error(`Could not find a version that matches '${input}'.`);
   }
 
-  async getVersion(): Promise<string> {
-    if (this.latest) {
-      return await this.getLatestVersion();
-    } else if (semverValid(this.input)) {
-      return this.input;
-    } else {
-      return await this.getSatisfiedVersion();
-    }
-  }
+  return info;
+}
 
-  async getLatestVersion(): Promise<string> {
-    const [version] = await this.getAvailableVersions();
+export async function getAvailableList(url: string): Promise<JenaInfo[]> {
+  const response = await fetch(url);
 
-    if (!version) {
-      throw new Error('Could not get the latest version.');
-    }
-
-    return version;
-  }
-
-  async getSatisfiedVersion(): Promise<string> {
-    const versions = await this.getAvailableVersions();
-
-    const satisfied = versions.find((version) =>
-      semverSatisfies(version, this.input)
+  if (!response.ok) {
+    throw new Error(
+      `${url} is currently unavailable: ${response.status} ${response.statusText}`
     );
-
-    if (!satisfied) {
-      throw new Error('No matching version was found.');
-    }
-
-    return satisfied;
   }
 
-  async getAvailableVersions(): Promise<string[]> {
-    const response = await fetch(this.baseUrl);
+  const html = await response.text();
 
-    if (!response.ok) {
-      throw new Error(
-        `Could not get ${this.baseUrl}: ${response.status} ${response.statusText}`
-      );
+  const list: JenaInfo[] = [];
+
+  const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
+  for (const [, version] of html.matchAll(regexp)) {
+    if (version) {
+      list.push({
+        version,
+        downloadUrl: `${url}apache-jena-${version}.tar.gz`,
+      });
     }
-
-    const html = await response.text();
-
-    const versions: string[] = [];
-
-    const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
-    for (const [, version] of html.matchAll(regexp)) {
-      if (version) {
-        versions.push(version);
-      }
-    }
-
-    if (!versions.length) {
-      throw new Error('Could not get the available versions.');
-    }
-
-    return semverRSort(versions);
   }
+
+  if (!list.length) {
+    throw new Error('Could not find any available versions.');
+  }
+
+  return list.sort((a, b) => semverCompare(b.version, a.version));
 }

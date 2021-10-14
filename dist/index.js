@@ -6295,20 +6295,6 @@ module.exports = cmp
 
 /***/ }),
 
-/***/ 2156:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const SemVer = __nccwpck_require__(8088)
-const compareBuild = (a, b, loose) => {
-  const versionA = new SemVer(a, loose)
-  const versionB = new SemVer(b, loose)
-  return versionA.compare(versionB) || versionA.compareBuild(versionB)
-}
-module.exports = compareBuild
-
-
-/***/ }),
-
 /***/ 4309:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -6381,56 +6367,6 @@ module.exports = neq
 
 /***/ }),
 
-/***/ 5925:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const {MAX_LENGTH} = __nccwpck_require__(2293)
-const { re, t } = __nccwpck_require__(9523)
-const SemVer = __nccwpck_require__(8088)
-
-const parseOptions = __nccwpck_require__(785)
-const parse = (version, options) => {
-  options = parseOptions(options)
-
-  if (version instanceof SemVer) {
-    return version
-  }
-
-  if (typeof version !== 'string') {
-    return null
-  }
-
-  if (version.length > MAX_LENGTH) {
-    return null
-  }
-
-  const r = options.loose ? re[t.LOOSE] : re[t.FULL]
-  if (!r.test(version)) {
-    return null
-  }
-
-  try {
-    return new SemVer(version, options)
-  } catch (er) {
-    return null
-  }
-}
-
-module.exports = parse
-
-
-/***/ }),
-
-/***/ 8701:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const compareBuild = __nccwpck_require__(2156)
-const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose))
-module.exports = rsort
-
-
-/***/ }),
-
 /***/ 6055:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -6444,19 +6380,6 @@ const satisfies = (version, range, options) => {
   return range.test(version)
 }
 module.exports = satisfies
-
-
-/***/ }),
-
-/***/ 9601:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const parse = __nccwpck_require__(5925)
-const valid = (version, options) => {
-  const v = parse(version, options)
-  return v ? v.version : null
-}
-module.exports = valid
 
 
 /***/ }),
@@ -13849,80 +13772,53 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
 	});
 }
 
-// EXTERNAL MODULE: ./node_modules/semver/functions/valid.js
-var valid = __nccwpck_require__(9601);
-var valid_default = /*#__PURE__*/__nccwpck_require__.n(valid);
 // EXTERNAL MODULE: ./node_modules/semver/functions/satisfies.js
 var satisfies = __nccwpck_require__(6055);
 var satisfies_default = /*#__PURE__*/__nccwpck_require__.n(satisfies);
-// EXTERNAL MODULE: ./node_modules/semver/functions/rsort.js
-var rsort = __nccwpck_require__(8701);
-var rsort_default = /*#__PURE__*/__nccwpck_require__.n(rsort);
+// EXTERNAL MODULE: ./node_modules/semver/functions/compare.js
+var compare = __nccwpck_require__(4309);
+var compare_default = /*#__PURE__*/__nccwpck_require__.n(compare);
 ;// CONCATENATED MODULE: ./src/jena-version.ts
-
 
 
 
 const CDN_PAGE_URL = 'https://dlcdn.apache.org/jena/binaries/';
 const ARCHIVE_PAGE_URL = 'https://archive.apache.org/dist/jena/binaries/';
-class JenaVersion {
-    input;
-    latest;
-    baseUrl;
-    constructor(input) {
-        this.input = input;
-        this.latest = !this.input || this.input === 'latest';
-        this.baseUrl = this.latest ? CDN_PAGE_URL : ARCHIVE_PAGE_URL;
+async function getLatest() {
+    const [info] = await getAvailableList(CDN_PAGE_URL);
+    if (!info) {
+        throw new Error('Could not find the latest version.');
     }
-    async getInfo() {
-        const version = await this.getVersion();
-        const downloadUrl = this.baseUrl + `apache-jena-${version}.tar.gz`;
-        return { version, downloadUrl };
+    return info;
+}
+async function getSatisfied(input) {
+    const list = await getAvailableList(ARCHIVE_PAGE_URL);
+    const info = list.find((candidate) => satisfies_default()(candidate.version, input));
+    if (!info) {
+        throw new Error(`Could not find a version that matches '${input}'.`);
     }
-    async getVersion() {
-        if (this.latest) {
-            return await this.getLatestVersion();
-        }
-        else if (valid_default()(this.input)) {
-            return this.input;
-        }
-        else {
-            return await this.getSatisfiedVersion();
+    return info;
+}
+async function getAvailableList(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`${url} is currently unavailable: ${response.status} ${response.statusText}`);
+    }
+    const html = await response.text();
+    const list = [];
+    const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
+    for (const [, version] of html.matchAll(regexp)) {
+        if (version) {
+            list.push({
+                version,
+                downloadUrl: `${url}apache-jena-${version}.tar.gz`,
+            });
         }
     }
-    async getLatestVersion() {
-        const [version] = await this.getAvailableVersions();
-        if (!version) {
-            throw new Error('Could not get the latest version.');
-        }
-        return version;
+    if (!list.length) {
+        throw new Error('Could not find any available versions.');
     }
-    async getSatisfiedVersion() {
-        const versions = await this.getAvailableVersions();
-        const satisfied = versions.find((version) => satisfies_default()(version, this.input));
-        if (!satisfied) {
-            throw new Error('No matching version was found.');
-        }
-        return satisfied;
-    }
-    async getAvailableVersions() {
-        const response = await fetch(this.baseUrl);
-        if (!response.ok) {
-            throw new Error(`Could not get ${this.baseUrl}: ${response.status} ${response.statusText}`);
-        }
-        const html = await response.text();
-        const versions = [];
-        const regexp = /href="apache-jena-(\d+\.\d+\.\d+)\.tar\.gz"/g;
-        for (const [, version] of html.matchAll(regexp)) {
-            if (version) {
-                versions.push(version);
-            }
-        }
-        if (!versions.length) {
-            throw new Error('Could not get the available versions.');
-        }
-        return rsort_default()(versions);
-    }
+    return list.sort((a, b) => compare_default()(b.version, a.version));
 }
 
 ;// CONCATENATED MODULE: ./src/setup-jena.ts
@@ -13939,7 +13835,8 @@ async function installJena(version, downloadUrl) {
 }
 async function run() {
     const version = core.getInput('jena-version');
-    const jena = await new JenaVersion(version).getInfo();
+    const isLatest = !version || version === 'latest';
+    const jena = isLatest ? await getLatest() : await getSatisfied(version);
     let jenaPath = tool_cache.find('jena', jena.version);
     if (!jenaPath) {
         core.info('Installing ' + jena.downloadUrl);

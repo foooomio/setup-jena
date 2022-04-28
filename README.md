@@ -7,12 +7,12 @@ GitHub Action to setup Apache Jena
 ```yml
 runs-on: ubuntu-latest
 steps:
-  - uses: actions/checkout@v2
-  - uses: actions/setup-java@v2
+  - uses: actions/checkout@v3
+  - uses: actions/setup-java@v3
     with:
-      distribution: adopt
-      java-version: 11 # Jena4 requires Java 11
-  - uses: foooomio/setup-jena@v1
+      distribution: temurin
+      java-version: 17 # Jena4 requires Java 11+
+  - uses: foooomio/setup-jena@v2
   - run: sparql --version
 ```
 

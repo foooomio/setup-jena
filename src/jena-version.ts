@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import semverSatisfies from 'semver/functions/satisfies';
 import semverCompare from 'semver/functions/compare';
 
@@ -27,7 +26,7 @@ export async function getSatisfied(input: string): Promise<JenaInfo> {
   const search = input === '2.7.0' ? '2.7.0-incubating' : input;
 
   const info = list.find((candidate) =>
-    semverSatisfies(candidate.version, search)
+    semverSatisfies(candidate.version, search),
   );
 
   if (!info) {
@@ -42,7 +41,7 @@ export async function getAvailableList(url: string): Promise<JenaInfo[]> {
 
   if (!response.ok) {
     throw new Error(
-      `${url} is currently unavailable: ${response.status} ${response.statusText}`
+      `${url} is currently unavailable: ${response.status} ${response.statusText}`,
     );
   }
 

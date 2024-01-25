@@ -5,7 +5,7 @@ import { getLatest, getSatisfied } from './jena-version';
 
 async function installJena(
   version: string,
-  downloadUrl: string
+  downloadUrl: string,
 ): Promise<string> {
   const archivePath = await tc.downloadTool(downloadUrl);
   const flags = ['xz', '--strip=1'];

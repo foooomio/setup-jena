@@ -1,10 +1,10 @@
 {
   "name": "setup-jena",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "GitHub Action to setup Apache Jena",
   "main": "dist/index.js",
   "scripts": {
-    "build": "esbuild src/setup-jena.ts --outfile=dist/index.js --bundle --platform=node --target=node16",
+    "build": "esbuild src/setup-jena.ts --outfile=dist/index.js --bundle --platform=node --target=node20",
     "format": "prettier --write .",
     "format-check": "prettier --check .",
     "test": "uvu -r tsm test"
@@ -20,20 +20,22 @@
   },
   "homepage": "https://github.com/foooomio/setup-jena#readme",
   "dependencies": {
-    "@actions/core": "^1.9.1",
+    "@actions/core": "^1.10.1",
     "@actions/tool-cache": "^2.0.1",
-    "node-fetch": "^3.2.10",
-    "semver": "^7.3.7"
+    "semver": "^7.5.4"
   },
   "devDependencies": {
-    "@types/node": "^18.7.6",
-    "@types/semver": "^7.3.12",
-    "esbuild": "^0.15.5",
-    "prettier": "^2.7.1",
-    "simple-git-hooks": "^2.8.0",
-    "tsm": "^2.2.2",
-    "typescript": "^4.7.4",
+    "@types/node": "^20.11.6",
+    "@types/semver": "^7.5.6",
+    "esbuild": "^0.19.12",
+    "prettier": "^3.2.4",
+    "simple-git-hooks": "^2.9.0",
+    "tsm": "^2.3.0",
+    "typescript": "^5.3.3",
     "uvu": "^0.5.6"
+  },
+  "engines": {
+    "node": "20"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run format && npm run build"

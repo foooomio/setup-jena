@@ -570,7 +570,12 @@ var require_proxy = __commonJS({
         }
       })();
       if (proxyVar) {
-        return new URL(proxyVar);
+        try {
+          return new URL(proxyVar);
+        } catch (_a) {
+          if (!proxyVar.startsWith("http://") && !proxyVar.startsWith("https://"))
+            return new URL(`http://${proxyVar}`);
+        }
       } else {
         return void 0;
       }
@@ -579,6 +584,10 @@ var require_proxy = __commonJS({
     function checkBypass(reqUrl) {
       if (!reqUrl.hostname) {
         return false;
+      }
+      const reqHost = reqUrl.hostname;
+      if (isLoopbackAddress(reqHost)) {
+        return true;
       }
       const noProxy = process.env["no_proxy"] || process.env["NO_PROXY"] || "";
       if (!noProxy) {
@@ -597,13 +606,17 @@ var require_proxy = __commonJS({
         upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
       }
       for (const upperNoProxyItem of noProxy.split(",").map((x) => x.trim().toUpperCase()).filter((x) => x)) {
-        if (upperReqHosts.some((x) => x === upperNoProxyItem)) {
+        if (upperNoProxyItem === "*" || upperReqHosts.some((x) => x === upperNoProxyItem || x.endsWith(`.${upperNoProxyItem}`) || upperNoProxyItem.startsWith(".") && x.endsWith(`${upperNoProxyItem}`))) {
           return true;
         }
       }
       return false;
     }
     exports2.checkBypass = checkBypass;
+    function isLoopbackAddress(host) {
+      const hostLower = host.toLowerCase();
+      return hostLower === "localhost" || hostLower.startsWith("127.") || hostLower.startsWith("[::1]") || hostLower.startsWith("[0:0:0:0:0:0:0:1]");
+    }
   }
 });
 
@@ -990,6 +1003,19 @@ var require_lib = __commonJS({
             });
             this.message.on("end", () => {
               resolve(output.toString());
+            });
+          }));
+        });
+      }
+      readBodyBuffer() {
+        return __awaiter(this, void 0, void 0, function* () {
+          return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+            const chunks = [];
+            this.message.on("data", (chunk) => {
+              chunks.push(chunk);
+            });
+            this.message.on("end", () => {
+              resolve(Buffer.concat(chunks));
             });
           }));
         });
@@ -2260,11 +2286,13 @@ var require_io_util = __commonJS({
     };
     var _a;
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.getCmdPath = exports2.tryGetExecutablePath = exports2.isRooted = exports2.isDirectory = exports2.exists = exports2.IS_WINDOWS = exports2.unlink = exports2.symlink = exports2.stat = exports2.rmdir = exports2.rename = exports2.readlink = exports2.readdir = exports2.mkdir = exports2.lstat = exports2.copyFile = exports2.chmod = void 0;
+    exports2.getCmdPath = exports2.tryGetExecutablePath = exports2.isRooted = exports2.isDirectory = exports2.exists = exports2.READONLY = exports2.UV_FS_O_EXLOCK = exports2.IS_WINDOWS = exports2.unlink = exports2.symlink = exports2.stat = exports2.rmdir = exports2.rm = exports2.rename = exports2.readlink = exports2.readdir = exports2.open = exports2.mkdir = exports2.lstat = exports2.copyFile = exports2.chmod = void 0;
     var fs = __importStar(require("fs"));
     var path2 = __importStar(require("path"));
-    _a = fs.promises, exports2.chmod = _a.chmod, exports2.copyFile = _a.copyFile, exports2.lstat = _a.lstat, exports2.mkdir = _a.mkdir, exports2.readdir = _a.readdir, exports2.readlink = _a.readlink, exports2.rename = _a.rename, exports2.rmdir = _a.rmdir, exports2.stat = _a.stat, exports2.symlink = _a.symlink, exports2.unlink = _a.unlink;
+    _a = fs.promises, exports2.chmod = _a.chmod, exports2.copyFile = _a.copyFile, exports2.lstat = _a.lstat, exports2.mkdir = _a.mkdir, exports2.open = _a.open, exports2.readdir = _a.readdir, exports2.readlink = _a.readlink, exports2.rename = _a.rename, exports2.rm = _a.rm, exports2.rmdir = _a.rmdir, exports2.stat = _a.stat, exports2.symlink = _a.symlink, exports2.unlink = _a.unlink;
     exports2.IS_WINDOWS = process.platform === "win32";
+    exports2.UV_FS_O_EXLOCK = 268435456;
+    exports2.READONLY = fs.constants.O_RDONLY;
     function exists(fsPath) {
       return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -2437,12 +2465,8 @@ var require_io = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.findInPath = exports2.which = exports2.mkdirP = exports2.rmRF = exports2.mv = exports2.cp = void 0;
     var assert_1 = require("assert");
-    var childProcess = __importStar(require("child_process"));
     var path2 = __importStar(require("path"));
-    var util_1 = require("util");
     var ioUtil = __importStar(require_io_util());
-    var exec = util_1.promisify(childProcess.exec);
-    var execFile = util_1.promisify(childProcess.execFile);
     function cp(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
         const { force, recursive, copySourceDirectory } = readCopyOptions(options);
@@ -2497,41 +2521,16 @@ var require_io = __commonJS({
           if (/[*"<>|]/.test(inputPath)) {
             throw new Error('File path must not contain `*`, `"`, `<`, `>` or `|` on Windows');
           }
-          try {
-            const cmdPath = ioUtil.getCmdPath();
-            if (yield ioUtil.isDirectory(inputPath, true)) {
-              yield exec(`${cmdPath} /s /c "rd /s /q "%inputPath%""`, {
-                env: { inputPath }
-              });
-            } else {
-              yield exec(`${cmdPath} /s /c "del /f /a "%inputPath%""`, {
-                env: { inputPath }
-              });
-            }
-          } catch (err) {
-            if (err.code !== "ENOENT")
-              throw err;
-          }
-          try {
-            yield ioUtil.unlink(inputPath);
-          } catch (err) {
-            if (err.code !== "ENOENT")
-              throw err;
-          }
-        } else {
-          let isDir = false;
-          try {
-            isDir = yield ioUtil.isDirectory(inputPath);
-          } catch (err) {
-            if (err.code !== "ENOENT")
-              throw err;
-            return;
-          }
-          if (isDir) {
-            yield execFile(`rm`, [`-rf`, `${inputPath}`]);
-          } else {
-            yield ioUtil.unlink(inputPath);
-          }
+        }
+        try {
+          yield ioUtil.rm(inputPath, {
+            force: true,
+            maxRetries: 3,
+            recursive: true,
+            retryDelay: 300
+          });
+        } catch (err) {
+          throw new Error(`File was unable to be removed ${err}`);
         }
       });
     }
@@ -2677,19 +2676,35 @@ var require_semver = __commonJS({
     var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || /* istanbul ignore next */
     9007199254740991;
     var MAX_SAFE_COMPONENT_LENGTH = 16;
+    var MAX_SAFE_BUILD_LENGTH = MAX_LENGTH - 6;
     var re = exports2.re = [];
+    var safeRe = exports2.safeRe = [];
     var src = exports2.src = [];
     var t = exports2.tokens = {};
     var R = 0;
     function tok(n) {
       t[n] = R++;
     }
+    var LETTERDASHNUMBER = "[a-zA-Z0-9-]";
+    var safeRegexReplacements = [
+      ["\\s", 1],
+      ["\\d", MAX_LENGTH],
+      [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH]
+    ];
+    function makeSafeRe(value) {
+      for (var i2 = 0; i2 < safeRegexReplacements.length; i2++) {
+        var token = safeRegexReplacements[i2][0];
+        var max = safeRegexReplacements[i2][1];
+        value = value.split(token + "*").join(token + "{0," + max + "}").split(token + "+").join(token + "{1," + max + "}");
+      }
+      return value;
+    }
     tok("NUMERICIDENTIFIER");
     src[t.NUMERICIDENTIFIER] = "0|[1-9]\\d*";
     tok("NUMERICIDENTIFIERLOOSE");
-    src[t.NUMERICIDENTIFIERLOOSE] = "[0-9]+";
+    src[t.NUMERICIDENTIFIERLOOSE] = "\\d+";
     tok("NONNUMERICIDENTIFIER");
-    src[t.NONNUMERICIDENTIFIER] = "\\d*[a-zA-Z-][a-zA-Z0-9-]*";
+    src[t.NONNUMERICIDENTIFIER] = "\\d*[a-zA-Z-]" + LETTERDASHNUMBER + "*";
     tok("MAINVERSION");
     src[t.MAINVERSION] = "(" + src[t.NUMERICIDENTIFIER] + ")\\.(" + src[t.NUMERICIDENTIFIER] + ")\\.(" + src[t.NUMERICIDENTIFIER] + ")";
     tok("MAINVERSIONLOOSE");
@@ -2703,7 +2718,7 @@ var require_semver = __commonJS({
     tok("PRERELEASELOOSE");
     src[t.PRERELEASELOOSE] = "(?:-?(" + src[t.PRERELEASEIDENTIFIERLOOSE] + "(?:\\." + src[t.PRERELEASEIDENTIFIERLOOSE] + ")*))";
     tok("BUILDIDENTIFIER");
-    src[t.BUILDIDENTIFIER] = "[0-9A-Za-z-]+";
+    src[t.BUILDIDENTIFIER] = LETTERDASHNUMBER + "+";
     tok("BUILD");
     src[t.BUILD] = "(?:\\+(" + src[t.BUILDIDENTIFIER] + "(?:\\." + src[t.BUILDIDENTIFIER] + ")*))";
     tok("FULL");
@@ -2732,11 +2747,13 @@ var require_semver = __commonJS({
     src[t.COERCE] = "(^|[^\\d])(\\d{1," + MAX_SAFE_COMPONENT_LENGTH + "})(?:\\.(\\d{1," + MAX_SAFE_COMPONENT_LENGTH + "}))?(?:\\.(\\d{1," + MAX_SAFE_COMPONENT_LENGTH + "}))?(?:$|[^\\d])";
     tok("COERCERTL");
     re[t.COERCERTL] = new RegExp(src[t.COERCE], "g");
+    safeRe[t.COERCERTL] = new RegExp(makeSafeRe(src[t.COERCE]), "g");
     tok("LONETILDE");
     src[t.LONETILDE] = "(?:~>?)";
     tok("TILDETRIM");
     src[t.TILDETRIM] = "(\\s*)" + src[t.LONETILDE] + "\\s+";
     re[t.TILDETRIM] = new RegExp(src[t.TILDETRIM], "g");
+    safeRe[t.TILDETRIM] = new RegExp(makeSafeRe(src[t.TILDETRIM]), "g");
     var tildeTrimReplace = "$1~";
     tok("TILDE");
     src[t.TILDE] = "^" + src[t.LONETILDE] + src[t.XRANGEPLAIN] + "$";
@@ -2747,6 +2764,7 @@ var require_semver = __commonJS({
     tok("CARETTRIM");
     src[t.CARETTRIM] = "(\\s*)" + src[t.LONECARET] + "\\s+";
     re[t.CARETTRIM] = new RegExp(src[t.CARETTRIM], "g");
+    safeRe[t.CARETTRIM] = new RegExp(makeSafeRe(src[t.CARETTRIM]), "g");
     var caretTrimReplace = "$1^";
     tok("CARET");
     src[t.CARET] = "^" + src[t.LONECARET] + src[t.XRANGEPLAIN] + "$";
@@ -2759,6 +2777,7 @@ var require_semver = __commonJS({
     tok("COMPARATORTRIM");
     src[t.COMPARATORTRIM] = "(\\s*)" + src[t.GTLT] + "\\s*(" + src[t.LOOSEPLAIN] + "|" + src[t.XRANGEPLAIN] + ")";
     re[t.COMPARATORTRIM] = new RegExp(src[t.COMPARATORTRIM], "g");
+    safeRe[t.COMPARATORTRIM] = new RegExp(makeSafeRe(src[t.COMPARATORTRIM]), "g");
     var comparatorTrimReplace = "$1$2$3";
     tok("HYPHENRANGE");
     src[t.HYPHENRANGE] = "^\\s*(" + src[t.XRANGEPLAIN] + ")\\s+-\\s+(" + src[t.XRANGEPLAIN] + ")\\s*$";
@@ -2770,6 +2789,7 @@ var require_semver = __commonJS({
       debug(i, src[i]);
       if (!re[i]) {
         re[i] = new RegExp(src[i]);
+        safeRe[i] = new RegExp(makeSafeRe(src[i]));
       }
     }
     var i;
@@ -2790,7 +2810,7 @@ var require_semver = __commonJS({
       if (version2.length > MAX_LENGTH) {
         return null;
       }
-      var r = options.loose ? re[t.LOOSE] : re[t.FULL];
+      var r = options.loose ? safeRe[t.LOOSE] : safeRe[t.FULL];
       if (!r.test(version2)) {
         return null;
       }
@@ -2836,7 +2856,7 @@ var require_semver = __commonJS({
       debug("SemVer", version2, options);
       this.options = options;
       this.loose = !!options.loose;
-      var m = version2.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
+      var m = version2.trim().match(options.loose ? safeRe[t.LOOSE] : safeRe[t.FULL]);
       if (!m) {
         throw new TypeError("Invalid Version: " + version2);
       }
@@ -3188,6 +3208,7 @@ var require_semver = __commonJS({
       if (!(this instanceof Comparator)) {
         return new Comparator(comp, options);
       }
+      comp = comp.trim().split(/\s+/).join(" ");
       debug("comparator", comp, options);
       this.options = options;
       this.loose = !!options.loose;
@@ -3201,7 +3222,7 @@ var require_semver = __commonJS({
     }
     var ANY = {};
     Comparator.prototype.parse = function(comp) {
-      var r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
+      var r = this.options.loose ? safeRe[t.COMPARATORLOOSE] : safeRe[t.COMPARATOR];
       var m = comp.match(r);
       if (!m) {
         throw new TypeError("Invalid comparator: " + comp);
@@ -3289,14 +3310,14 @@ var require_semver = __commonJS({
       this.options = options;
       this.loose = !!options.loose;
       this.includePrerelease = !!options.includePrerelease;
-      this.raw = range;
-      this.set = range.split(/\s*\|\|\s*/).map(function(range2) {
+      this.raw = range.trim().split(/\s+/).join(" ");
+      this.set = this.raw.split("||").map(function(range2) {
         return this.parseRange(range2.trim());
       }, this).filter(function(c) {
         return c.length;
       });
       if (!this.set.length) {
-        throw new TypeError("Invalid SemVer Range: " + range);
+        throw new TypeError("Invalid SemVer Range: " + this.raw);
       }
       this.format();
     }
@@ -3311,16 +3332,15 @@ var require_semver = __commonJS({
     };
     Range.prototype.parseRange = function(range) {
       var loose = this.options.loose;
-      range = range.trim();
-      var hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
+      var hr = loose ? safeRe[t.HYPHENRANGELOOSE] : safeRe[t.HYPHENRANGE];
       range = range.replace(hr, hyphenReplace);
       debug("hyphen replace", range);
-      range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace);
-      debug("comparator trim", range, re[t.COMPARATORTRIM]);
-      range = range.replace(re[t.TILDETRIM], tildeTrimReplace);
-      range = range.replace(re[t.CARETTRIM], caretTrimReplace);
+      range = range.replace(safeRe[t.COMPARATORTRIM], comparatorTrimReplace);
+      debug("comparator trim", range, safeRe[t.COMPARATORTRIM]);
+      range = range.replace(safeRe[t.TILDETRIM], tildeTrimReplace);
+      range = range.replace(safeRe[t.CARETTRIM], caretTrimReplace);
       range = range.split(/\s+/).join(" ");
-      var compRe = loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
+      var compRe = loose ? safeRe[t.COMPARATORLOOSE] : safeRe[t.COMPARATOR];
       var set = range.split(" ").map(function(comp) {
         return parseComparator(comp, this.options);
       }, this).join(" ").split(/\s+/);
@@ -3389,7 +3409,7 @@ var require_semver = __commonJS({
       }).join(" ");
     }
     function replaceTilde(comp, options) {
-      var r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
+      var r = options.loose ? safeRe[t.TILDELOOSE] : safeRe[t.TILDE];
       return comp.replace(r, function(_, M, m, p, pr) {
         debug("tilde", comp, _, M, m, p, pr);
         var ret;
@@ -3416,7 +3436,7 @@ var require_semver = __commonJS({
     }
     function replaceCaret(comp, options) {
       debug("caret", comp, options);
-      var r = options.loose ? re[t.CARETLOOSE] : re[t.CARET];
+      var r = options.loose ? safeRe[t.CARETLOOSE] : safeRe[t.CARET];
       return comp.replace(r, function(_, M, m, p, pr) {
         debug("caret", comp, _, M, m, p, pr);
         var ret;
@@ -3465,7 +3485,7 @@ var require_semver = __commonJS({
     }
     function replaceXRange(comp, options) {
       comp = comp.trim();
-      var r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
+      var r = options.loose ? safeRe[t.XRANGELOOSE] : safeRe[t.XRANGE];
       return comp.replace(r, function(ret, gtlt, M, m, p, pr) {
         debug("xRange", comp, ret, gtlt, M, m, p, pr);
         var xM = isX(M);
@@ -3517,7 +3537,7 @@ var require_semver = __commonJS({
     }
     function replaceStars(comp, options) {
       debug("replaceStars", comp, options);
-      return comp.trim().replace(re[t.STAR], "");
+      return comp.trim().replace(safeRe[t.STAR], "");
     }
     function hyphenReplace($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr, tb) {
       if (isX(fM)) {
@@ -3767,16 +3787,16 @@ var require_semver = __commonJS({
       options = options || {};
       var match = null;
       if (!options.rtl) {
-        match = version2.match(re[t.COERCE]);
+        match = version2.match(safeRe[t.COERCE]);
       } else {
         var next;
-        while ((next = re[t.COERCERTL].exec(version2)) && (!match || match.index + match[0].length !== version2.length)) {
+        while ((next = safeRe[t.COERCERTL].exec(version2)) && (!match || match.index + match[0].length !== version2.length)) {
           if (!match || next.index + next[0].length !== match.index + match[0].length) {
             match = next;
           }
-          re[t.COERCERTL].lastIndex = next.index + next[1].length + next[2].length;
+          safeRe[t.COERCERTL].lastIndex = next.index + next[1].length + next[2].length;
         }
-        re[t.COERCERTL].lastIndex = -1;
+        safeRe[t.COERCERTL].lastIndex = -1;
       }
       if (match === null) {
         return null;
@@ -6025,8 +6045,11 @@ var require_re = __commonJS({
     createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
     createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
     createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
-    createToken("COERCE", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:$|[^\\d])`);
+    createToken("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+    createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+    createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
     createToken("COERCERTL", src[t.COERCE], true);
+    createToken("COERCERTLFULL", src[t.COERCEFULL], true);
     createToken("LONETILDE", "(?:~>?)");
     createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
     exports2.tildeTrimReplace = "$1~";

@@ -1,13 +1,13 @@
-name: 'Setup Apache Jena'
-description: 'Setup Apache Jena and add it to the PATH'
+name: Setup Apache Jena
+description: Setup Apache Jena and add it to the PATH
 inputs:
   jena-version:
-    description: 'The version of Apache Jena to be installed'
+    description: The version of Apache Jena to be installed
     required: false
-    default: 'latest'
+    default: latest
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: node24
+  main: dist/index.js
 branding:
-  icon: 'share-2'
-  color: 'blue'
+  icon: share-2
+  color: blue

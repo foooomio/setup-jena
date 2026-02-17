@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as tc from '@actions/tool-cache';
-import path from 'path';
+import * as path from 'node:path';
 import { getLatest, getSatisfied } from './jena-version';
 
 async function installJena(

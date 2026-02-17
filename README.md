@@ -7,18 +7,19 @@ GitHub Action to setup Apache Jena
 ```yml
 runs-on: ubuntu-latest
 steps:
-  - uses: actions/checkout@v4
-  - uses: actions/setup-java@v4
+  - uses: actions/checkout@v6
+  - uses: actions/setup-java@v5
     with:
       distribution: temurin
-      java-version: 17 # Jena4 requires Java 11+
-  - uses: foooomio/setup-jena@v3
+      java-version: 21
+  - uses: foooomio/setup-jena@v4
+    with:
+      # The version of Apache Jena to be installed
+      # Examples: 5.x, 5.6.0, latest
+      # Default: latest
+      jena-version: latest
   - run: sparql --version
 ```
-
-## Inputs
-
-- `jena-version`: Optional. The version of Apache Jena to be installed. Example: `4.1.0`. Defaults to `latest`.
 
 ## License
 

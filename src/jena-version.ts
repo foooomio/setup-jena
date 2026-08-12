@@ -1,9 +1,8 @@
-import semverSatisfies from 'semver/functions/satisfies';
-import semverCompare from 'semver/functions/compare';
+import semverCompare from "semver/functions/compare.js";
+import semverSatisfies from "semver/functions/satisfies.js";
 
-export const CDN_PAGE_URL = 'https://dlcdn.apache.org/jena/binaries/';
-export const ARCHIVE_PAGE_URL =
-  'https://archive.apache.org/dist/jena/binaries/';
+export const CDN_PAGE_URL = "https://dlcdn.apache.org/jena/binaries/";
+export const ARCHIVE_PAGE_URL = "https://archive.apache.org/dist/jena/binaries/";
 
 export interface JenaInfo {
   readonly version: string;
@@ -14,7 +13,7 @@ export async function getLatest(): Promise<JenaInfo> {
   const [info] = await getAvailableList(CDN_PAGE_URL);
 
   if (!info) {
-    throw new Error('Could not find the latest version.');
+    throw new Error("Could not find the latest version.");
   }
 
   return info;
@@ -23,11 +22,9 @@ export async function getLatest(): Promise<JenaInfo> {
 export async function getSatisfied(input: string): Promise<JenaInfo> {
   const list = await getAvailableList(ARCHIVE_PAGE_URL);
 
-  const search = input === '2.7.0' ? '2.7.0-incubating' : input;
+  const search = input === "2.7.0" ? "2.7.0-incubating" : input;
 
-  const info = list.find((candidate) =>
-    semverSatisfies(candidate.version, search),
-  );
+  const info = list.find((candidate) => semverSatisfies(candidate.version, search));
 
   if (!info) {
     throw new Error(`Could not find a version that matches '${input}'.`);
@@ -40,17 +37,14 @@ export async function getAvailableList(url: string): Promise<JenaInfo[]> {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(
-      `${url} is currently unavailable: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`${url} is currently unavailable: ${response.status} ${response.statusText}`);
   }
 
   const html = await response.text();
 
   const list: JenaInfo[] = [];
 
-  const regexp =
-    /href="(apache-jena-(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+)?)\.tar\.gz)"/g;
+  const regexp = /href="(apache-jena-(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+)?)\.tar\.gz)"/g;
 
   for (const [, filename, version] of html.matchAll(regexp)) {
     if (filename && version) {
@@ -59,8 +53,8 @@ export async function getAvailableList(url: string): Promise<JenaInfo[]> {
   }
 
   if (!list.length) {
-    throw new Error('Could not find any available versions.');
+    throw new Error("Could not find any available versions.");
   }
 
-  return list.sort((a, b) => semverCompare(b.version, a.version));
+  return list.toSorted((a, b) => semverCompare(b.version, a.version));
 }
